@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+
+import subprocess
+import sys
+import json
+import os
+import re
+
+pdb = {};
+
+def writeDb(db):
+    open(os.path.expanduser("~/.ptpbstore.json"), 'w+').write(json.dumps(db));
+
+def readDb():
+    if not os.path.isfile(os.path.expanduser("~/.ptpbstore.json")):
+        os.system("touch ~/.ptpbstore.json");
+        writeDb({});
+    return json.loads(open(os.path.expanduser("~/.ptpbstore.json"), 'r').read());
+
+def parseOutput(out, fext=""):
+    parsed = {};
+    parsed["status"] = re.search(r'status: (\w+)', out).group(1);
+    parsed["url"] = re.search(r'url: (https://ptpb.pw/.+)', out).group(1);
+    print(parsed["url"]+fext);
+    if parsed["status"] == "created":
+        parsed["key"] = re.search(r'uuid: ([\w|-]+)', out).group(1);
+        pdb[parsed["url"].split("/")[-1]] = parsed["key"];
+    return parsed["url"];
+
+def runCmd(cmd):
+    prc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE);
+    return prc.stdout.decode("ascii");
+
+def runDangerCmd(cmd):
+    prc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True);
+    return prc.stdout.decode("ascii");
+
+def upload(inp):
+    if inp[-1] == "\n":
+        inp = inp[:-1];
+    out = runCmd(["curl", "-F", "c={}".format(inp), "https://ptpb.pw/"]);
+    parseOutput(out);
+
+def uploadFile(inp):
+    out = runDangerCmd("curl -F c=@- https://ptpb.pw/ < "+inp);
+    parseOutput(out, os.path.splitext(inp)[1]);
+
+def update(inp, pid):
+    if inp[-1] == "\n":
+        inp = inp[:-1];
+    out = runCmd(["curl", "-X", "PUT", "-F", "c="+inp, "https://ptpb.pw/"+pid]);
+    pdb[parseOutput(out).split("/")[-1]] = pid;
+
+def updateFile(inp, pid):
+    out = runDangerCmd("curl -X PUT -F c=@- https://ptpb.pw/"+pid+" < "+inp);
+    pdb[parseOutput(out).split("/")[-1], os.path.splitext(inp)[1]] = pid;
+
+pdb = readDb();
+
+if sys.argv[0][-3:] == "pbc":
+    if len(sys.argv) > 1:
+        if os.path.isfile(sys.argv[1]):
+            uploadFile(sys.argv[1]);
+        else:
+            upload(sys.argv[1]);
+    else:
+        upload(sys.stdin.read());
+
+if sys.argv[0][-3:] == "pbu":
+    if re.match(r'(\w+-)+\w+', sys.argv[1]) != None:
+        key = sys.argv[1];
+    else:
+        uri = sys.argv[1].split("/")[-1];
+        if uri in pdb:
+            key = pdb[uri];
+            del pdb[uri];
+        else:
+            print("Unable to find key");
+            sys.exit(1);
+    if len(sys.argv) > 2:
+        if os.path.isfile(sys.argv[2]):
+            updateFile(sys.argv[2], key);
+        else:
+            update(sys.argv[2], key);
+    else:
+        update(sys.stdin.read(), key);
+
+if sys.argv[0][-3:] == "pbd":
+    if re.match(r'(\w+-)+\w+', sys.argv[1]) != None:
+        key = sys.argv[1];
+    else:
+        uri = sys.argv[1].split("/")[-1];
+        if uri in pdb:
+            key = pdb[uri];
+            del pdb[uri];
+        else:
+            print("Unable to find key");
+            sys.exit(1);
+    out = runCmd(["curl", "-X", "DELETE", "https://ptpb.pw/"+key]);
+
+writeDb(pdb);
