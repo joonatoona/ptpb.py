@@ -71,7 +71,7 @@ if sys.argv[0][-3:] == "pbu":
     if re.match(r'(\w+-)+\w+', sys.argv[1]) != None:
         key = sys.argv[1];
     else:
-        uri = sys.argv[1].split("/")[-1];
+        uri = sys.argv[1].split("/")[-1].split(".")[0];
         if uri in pdb:
             key = pdb[uri];
             del pdb[uri];
@@ -90,7 +90,7 @@ if sys.argv[0][-3:] == "pbd":
     if re.match(r'(\w+-)+\w+', sys.argv[1]) != None:
         key = sys.argv[1];
     else:
-        uri = sys.argv[1].split("/")[-1];
+        uri = sys.argv[1].split("/")[-1].split(".")[0];
         if uri in pdb:
             key = pdb[uri];
             del pdb[uri];
