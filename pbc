@@ -22,6 +22,7 @@ def parseOutput(out, fext=""):
     parsed["status"] = re.search(r'status: (\w+)', out).group(1);
     parsed["url"] = re.search(r'url: (https://ptpb.pw/.+)', out).group(1);
     print(parsed["url"]+fext);
+    runDangerCmd("echo '"+parsed["url"]+fext+"' | xsel -b");
     if parsed["status"] == "created":
         parsed["key"] = re.search(r'uuid: ([\w|-]+)', out).group(1);
         pdb[parsed["url"].split("/")[-1]] = parsed["key"];
